@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+
+metadata:
+  name: clientmanager-ingress
+
+spec:
+  ingressClassName: nginx
+
+  rules:
+    - host: clientmanger.tech
+
+      http:
+        paths:
+          - path: /
+
+            pathType: Prefix
+
+            backend:
+              service:
+                name: clientmanager-api
+
+                port:
+                  number: 80

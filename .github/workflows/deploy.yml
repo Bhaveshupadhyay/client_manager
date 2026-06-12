@@ -1,0 +1,42 @@
+name: Deploy FastAPI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - run: |
+          az acr login --name ${{ secrets.ACR_NAME }}
+
+      - run: |
+          docker build -t clientmanageracr.azurecr.io/clientmanager-api:${{ github.sha }} .
+
+      - run: |
+          docker push clientmanageracr.azurecr.io/clientmanager-api:${{ github.sha }}
+
+      - run: |
+          az aks get-credentials \
+            --resource-group ${{ secrets.RESOURCE_GROUP }} \
+            --name ${{ secrets.AKS_CLUSTER }} \
+            --overwrite-existing
+
+      - run: |
+          kubectl apply -f k8s/
+
+      - run: |
+          kubectl set image deployment/clientmanager-api \
+          api=clientmanageracr.azurecr.io/clientmanager-api:${{ github.sha }}

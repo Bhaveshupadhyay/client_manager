@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clientmanager-api
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: clientmanager-api
+
+  template:
+    metadata:
+      labels:
+        app: clientmanager-api
+
+    spec:
+      containers:
+        - name: api
+
+          image: clientmanageracr.azurecr.io/clientmanager-api:latest
+
+          ports:
+            - containerPort: 8000
