@@ -23,10 +23,12 @@ jobs:
           az acr login --name ${{ secrets.ACR_NAME }}
 
       - run: |
-          docker build -t clientmanageracr.azurecr.io/clientmanager-api:${{ github.sha }} .
+          docker build \
+            -t ${{ secrets.ACR_NAME }}.azurecr.io/clientmanager-api:${{ github.sha }} .
 
       - run: |
-          docker push clientmanageracr.azurecr.io/clientmanager-api:${{ github.sha }}
+          docker push \
+            ${{ secrets.ACR_NAME }}.azurecr.io/clientmanager-api:${{ github.sha }}
 
       - run: |
           az aks get-credentials \
