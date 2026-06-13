@@ -16,6 +16,9 @@ spec:
         app: clientmanager-api
 
     spec:
+      imagePullSecrets:
+        - name: acr-secret
+
       containers:
         - name: api
 
