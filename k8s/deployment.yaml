@@ -19,7 +19,7 @@ spec:
       containers:
         - name: api
 
-          image: clientmanageracr.azurecr.io/clientmanager-api:latest
+          image: <IMAGE_PLACEHOLDER>
 
           ports:
             - containerPort: 8000
