@@ -1,6 +1,8 @@
-def main():
-    print("Hello from ai-agent!")
+from fastapi import FastAPI
 
+# This is the "app" that Uvicorn is looking for!
+app = FastAPI()
 
-if __name__ == "__main__":
-    main()
+@app.get("/")
+def read_root():
+    return {"message": "Hello from ai-agent! My API is officially live on Azure."}
