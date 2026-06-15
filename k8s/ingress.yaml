@@ -3,6 +3,9 @@ kind: Ingress
 
 metadata:
   name: clientmanager-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-rps: "50"
 
 spec:
   ingressClassName: nginx
