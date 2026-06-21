@@ -1,9 +1,12 @@
-from typing import Generator
+import os
+from typing import Generator, Annotated
+
 from backend.database import SessionLocal  # Look! Importing the global variable
-from fastapi import Security, HTTPException, status, Depends
+from fastapi import Security, HTTPException, status, Depends,Header,Request
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session, joinedload
 from backend.models.account import Account, APIKeyModel
+from backend.services.llm_provider import LLmProvider, GeminiLLmProvider
 
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
@@ -19,8 +22,17 @@ def get_db() -> Generator:
         db.close()
 
 
+def get_cosmos_db(request: Request) -> Generator:
+    database = request.app.state.cosmos_db
+    return database
+
+def get_llm_provider() -> LLmProvider:
+    return GeminiLLmProvider()
+
+
 def get_current_account(
         api_key: str = Security(api_key_header),
+        source: str | None = None,
         db: Session = Depends(get_db)
 ) -> Account:
     """
