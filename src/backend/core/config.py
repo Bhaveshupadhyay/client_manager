@@ -13,3 +13,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+from enum import Enum
+
+class CosmosContainers(str, Enum):
+    AGENT_INTERACTIONS = "AgentInteractions"
+    PROJECT_REQUIREMENTS = "project_requirements"
