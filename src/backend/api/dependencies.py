@@ -1,5 +1,7 @@
 import os
-from typing import Generator, Annotated
+from typing import Generator
+
+from azure.cosmos.aio import CosmosClient, DatabaseProxy
 
 from backend.database import SessionLocal  # Look! Importing the global variable
 from fastapi import Security, HTTPException, status, Depends,Header,Request
@@ -13,8 +15,6 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 
 def get_db() -> Generator:
-    # We call the factory inside a def because we want a FRESH session
-    # for every single incoming HTTP request.
     db = SessionLocal()
     try:
         yield db
@@ -22,13 +22,26 @@ def get_db() -> Generator:
         db.close()
 
 
-def get_cosmos_db(request: Request) -> Generator:
-    database = request.app.state.cosmos_db
-    return database
+def get_cosmos_db(request: Request) -> DatabaseProxy:
+    try:
+        database = request.app.state.cosmos_db
+        return database
+    finally:
+        pass
+
+def get_client_project_container(request: Request) -> Generator:
+    try:
+        cosmos_db = get_cosmos_db(request)
+        container = cosmos_db.get_container_client("project_requirements")
+        yield container
+    finally:
+        pass
 
 def get_llm_provider() -> LLmProvider:
     return GeminiLLmProvider()
 
+async def get_redis(request: Request) -> Generator:
+    return request.app.state.redis
 
 def get_current_account(
         api_key: str = Security(api_key_header),

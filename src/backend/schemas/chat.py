@@ -12,3 +12,8 @@ class ChatResponse(BaseModel):
     message: str
     name: str
     action: Optional[str] = None
+
+
+class ChatMessage(BaseModel):
+    role: str
+    text: str
