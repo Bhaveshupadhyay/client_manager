@@ -26,7 +26,7 @@ async def chat(chat_request: ChatRequest,
     try:
         project_details= await get_project_details(project_id='fi_us_2026_4528',db_container=db_container)
         redis_key = f"chat:session:{project_details.project_id}"
-        # await redis.delete(redis_key)
+
         old_chats= await get_old_chats(redis_client=redis, redis_key=redis_key)
 
         llm_response = await llm.generate_text(prompt=chat_request.message,old_chats=old_chats)
