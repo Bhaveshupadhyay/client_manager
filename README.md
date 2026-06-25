@@ -49,8 +49,8 @@ This platform solves these bottlenecks by deploying specialized AI agents that i
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/yourusername/ai-client-manager.git](https://github.com/yourusername/ai-client-manager.git)
-   cd ai-client-manager
+   git clone https://github.com/bhaveshupadhyay/client_manager.git
+   cd client_manager
 
 2. **Configure Environment Variables:**
    ```bash
