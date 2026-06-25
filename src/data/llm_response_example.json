@@ -1,0 +1,47 @@
+[
+  {
+    "intent_type": "general_faq",
+    "text": "Hi! We'd love to help you build your project. Could you share what kind of app or website you are looking to create?",
+    "budget": null,
+    "timeline": null,
+    "requirements": null,
+    "tech_stack": null,
+    "reply_needed": true
+  },
+  {
+    "intent_type": "update_budget",
+    "text": "Understood, I have updated your target budget to $5,000. To make sure we align the scope with that budget, could you clarify if you need a custom admin panel?",
+    "budget": "$5000",
+    "timeline": null,
+    "requirements": null,
+    "tech_stack": null,
+    "reply_needed": true
+  },
+  {
+    "intent_type": "update_estimated_cost",
+    "text": "Since we are now adding real-time video streaming to the scope, that will increase the estimated development effort. The new estimated cost will reflect this addition.",
+    "budget": null,
+    "timeline": null,
+    "requirements": "User authentication, chat, real-time video streaming",
+    "tech_stack": null,
+    "reply_needed": false
+  },
+  {
+    "intent_type": "reset_requirements",
+    "text": "I understand. Let's adjust the scope. We will remove the complex matching algorithm and stick to a simple list view for now. Here are the updated requirements: User login, profile creation, and a searchable list of service providers.",
+    "budget": null,
+    "timeline": null,
+    "requirements": "User login, profile creation, searchable list of service providers",
+    "tech_stack": null,
+    "reply_needed": true
+  },
+  {
+    "intent_type": "update_tech_stack",
+    "text": "Since you mentioned needing a landing page along with the mobile app, we will add React.js for the web frontend alongside Flutter for the mobile app and Python for the backend.",
+    "budget": null,
+    "timeline": null,
+    "requirements": "Mobile app and landing page",
+    "tech_stack": "Flutter, Python, React.js",
+    "reply_needed": true
+  }
+]
