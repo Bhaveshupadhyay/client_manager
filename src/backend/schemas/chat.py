@@ -5,7 +5,7 @@ from pydantic import BaseModel
 class ChatRequest(BaseModel):
     message: str
     client_name: str
-
+    project_id: str
 
 
 class ChatResponse(BaseModel):
