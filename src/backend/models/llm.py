@@ -16,7 +16,7 @@ class IntentType(StrEnum):
     GENERAL_FAQ = "general_faq"
 
 class ClientIntent(BaseModel):
-    intent_type: str = Field(description="Must be either 'save_lead' or 'general_faq'")
+    intent_type: str = Field(description="Can be update_budget, update_estimated_cost, etc.")
     text: str = Field(description="Answer the question")
     budget: str | None = None
     timeline: Timeline | None = None

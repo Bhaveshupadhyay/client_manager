@@ -1,34 +1,65 @@
+import inspect
 import json
-from redis.asyncio import Redis
+import logging
+from functools import wraps
+from typing import Optional, Type, Any
+from backend.database import get_redis_client
 
-from backend.schemas.chat import ChatMessage
+from pydantic import TypeAdapter
+
+logger = logging.getLogger(__name__)
+def cached(
+        namespace: str = "default",
+        key: Optional[list[str]] = None,
+        redis_ttl: int = 3600,
+        return_type: Optional[Type[Any]] = None,
+):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+
+            sig = inspect.signature(func)
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+            func_args = bound_args.arguments
+
+            if not key:
+                return Exception('Key is required.')
+            key_parts = [str(func_args.get(k)) for k in key]
+            cache_key = get_redis_key(namespace=namespace,key_parts=key_parts)
+
+            cached_data = await get_redis_client().get(cache_key)
+
+            if cached_data:
+                logger.info(f"[CACHE HIT] Returning data for {cache_key}")
+                if return_type:
+                    return TypeAdapter(return_type).validate_json(cached_data)
+                return json.loads(cached_data)
+
+            logger.info(f"[CACHE MISS] Executing function for {cache_key}")
+
+            result = await func(*args, **kwargs)
+
+            if result is not None:
+                if return_type:
+                    data_to_store = TypeAdapter(return_type).dump_json(result).decode('utf-8')
+                else:
+                    data_to_store = json.dumps(result)
+
+                await get_redis_client().set(name=cache_key, ex=redis_ttl, value=data_to_store)
+            return result
+        return wrapper
+    return decorator
 
 
-async def insert_chats(redis_client:Redis, redis_key, chat_messages: list[ChatMessage]):
-
-    message_dic_list= [msg.model_dump() for msg in chat_messages]
-    message_json_string = json.dumps(message_dic_list)
-    async with redis_client.pipeline(transaction=True) as pipe:
-        pipe.rpush(redis_key, message_json_string)
-        pipe.ltrim(redis_key, -10, -1)
-        pipe.expire(redis_key, 4800)
-
-        await pipe.execute()
+async def insert_redis_data(
+        key: str,
+        namespace: str = "default",
+        redis_ttl: int = 3600,
+        data: Any = None,
+):
+    await get_redis_client().set(get_redis_key(namespace=namespace,key_parts=[key]), json.dumps(data), ex=redis_ttl)
 
 
-async def get_old_chats(redis_client:Redis, redis_key:str) -> list[ChatMessage]:
-    raw_messages = await redis_client.lrange(redis_key, 0, -1)
-    if not raw_messages:
-        return []
-
-    chat_history = []
-
-    for msg_string in raw_messages:
-        if msg_string.startswith("["):
-            message_dicts = json.loads(msg_string)
-            for msg_dict in message_dicts:
-                chat_history.append(ChatMessage.model_validate(msg_dict))
-        else:
-            chat_history.append(ChatMessage.model_validate_json(msg_string))
-
-    return chat_history
+def get_redis_key(namespace: str, key_parts: list[str]) -> str:
+    return f"{namespace}:{':'.join(key_parts)}"

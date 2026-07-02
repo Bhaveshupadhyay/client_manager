@@ -1,47 +1,49 @@
-import os
+from functools import lru_cache
 from typing import Generator
-
-from azure.cosmos.aio import CosmosClient, DatabaseProxy
-
-from backend.database import SessionLocal  # Look! Importing the global variable
+from backend.database import get_postgres_client, get_cosmos_client, get_redis_client
 from fastapi import Security, HTTPException, status, Depends,Header,Request
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session, joinedload
 from backend.models.account import Account, APIKeyModel
+from backend.services.chat_service import ChatService
 from backend.services.llm_provider import LLmProvider, GeminiLLmProvider
+from backend.services.project_service import ProjectService
 
 API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 
 def get_db() -> Generator:
-    db = SessionLocal()
+    session_local = get_postgres_client()
+    db = session_local()
     try:
         yield db
     finally:
         db.close()
 
 
-def get_cosmos_db(request: Request) -> DatabaseProxy:
+def get_client_project_container():
     try:
-        database = request.app.state.cosmos_db
-        return database
-    finally:
-        pass
-
-def get_client_project_container(request: Request) -> Generator:
-    try:
-        cosmos_db = get_cosmos_db(request)
-        container = cosmos_db.get_container_client("project_requirements")
-        yield container
+        cosmos_client = get_cosmos_client()
+        database = cosmos_client.get_database_client('ai-client-manager')
+        container = database.get_container_client("project_requirements")
+        return container
     finally:
         pass
 
 def get_llm_provider() -> LLmProvider:
     return GeminiLLmProvider()
 
-async def get_redis(request: Request) -> Generator:
-    return request.app.state.redis
+@lru_cache
+def get_project_service() -> ProjectService:
+    db_container = get_client_project_container()
+    return ProjectService(db_container=db_container)
+
+@lru_cache
+def get_chat_service() -> ChatService:
+    redis_client = get_redis_client()
+
+    return ChatService(redis_client=redis_client)
 
 def get_current_account(
         api_key: str = Security(api_key_header),
@@ -58,7 +60,6 @@ def get_current_account(
             detail="Authentication failed: X-API-Key header is missing.",
         )
 
-    # Query your PostgreSQL accounts table using the high-performance index we set up
     api_key_obj = ((db.query(APIKeyModel).options(joinedload(APIKeyModel.account)).
                     filter(APIKeyModel.key_string == api_key))
                    .first())
@@ -66,7 +67,6 @@ def get_current_account(
     if not api_key_obj:
         raise HTTPException(status_code=401, detail="Invalid API Key")
 
-    # 3. Check if the key is active
     if not api_key_obj.is_active:
         raise HTTPException(status_code=403, detail="API Key is deactivated")
 
