@@ -66,8 +66,6 @@ class GeminiLLmProvider(LLmProvider):
                 formatted_key = key.replace('_', ' ').title()
                 dynamic_system_instruction += f"- {formatted_key}: {value}\n"
 
-        logger.info(f'system_instruction: {dynamic_system_instruction}')
-
         if old_chats:
             for chat in old_chats:
                 gemini_content.append({

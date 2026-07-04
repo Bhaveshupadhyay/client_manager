@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean
-from backend.database import Base
+from backend.client import Base
 
 
 class UserModel(Base):

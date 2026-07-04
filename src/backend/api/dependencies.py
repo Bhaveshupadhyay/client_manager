@@ -1,6 +1,6 @@
 from functools import lru_cache
 from typing import Generator
-from backend.database import get_postgres_client, get_cosmos_client, get_redis_client
+from backend.client import get_postgres_client, get_cosmos_client, get_redis_client
 from fastapi import Security, HTTPException, status, Depends,Header,Request
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session, joinedload
