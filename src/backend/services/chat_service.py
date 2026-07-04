@@ -1,11 +1,11 @@
-from redis.asyncio import RedisCluster
+from upstash_redis.asyncio import Redis
 
 from backend.schemas.chat import ChatMessage
 from backend.services.redis_service import get_redis_key
 
 
 class ChatService:
-    def __init__(self, redis_client: RedisCluster):
+    def __init__(self, redis_client: Redis):
         self.redis_client = redis_client
 
     async def get_old_chats(self,project_id:str) -> list[ChatMessage]:

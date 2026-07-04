@@ -3,7 +3,7 @@ import json
 import logging
 from functools import wraps
 from typing import Optional, Type, Any
-from backend.database import get_redis_client
+from backend.client import get_redis_client
 
 from pydantic import TypeAdapter
 
@@ -46,7 +46,7 @@ def cached(
                 else:
                     data_to_store = json.dumps(result)
 
-                await get_redis_client().set(name=cache_key, ex=redis_ttl, value=data_to_store)
+                await get_redis_client().set(key=cache_key, ex=redis_ttl, value=data_to_store)
             return result
         return wrapper
     return decorator
@@ -58,7 +58,7 @@ async def insert_redis_data(
         redis_ttl: int = 3600,
         data: Any = None,
 ):
-    await get_redis_client().set(get_redis_key(namespace=namespace,key_parts=[key]), json.dumps(data), ex=redis_ttl)
+    await get_redis_client().set(key=get_redis_key(namespace=namespace,key_parts=[key]), value=json.dumps(data), ex=redis_ttl)
 
 
 def get_redis_key(namespace: str, key_parts: list[str]) -> str:
