@@ -1,5 +1,6 @@
 FROM python:3.14-slim
 
+RUN apt-get install tesseract-ocr
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 

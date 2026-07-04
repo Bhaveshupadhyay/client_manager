@@ -22,7 +22,7 @@ class ChatService:
         if cosmos_chats:
             message_json = [chat.model_dump_json() for chat in cosmos_chats]
             await self.redis_client.rpush(cache_key, *message_json)
-            await self.redis_client.expire(cache_key, 4800)
+            await self.redis_client.expire(cache_key, 3600)
 
         return cosmos_chats
 
@@ -40,6 +40,6 @@ class ChatService:
 
         await self.redis_client.ltrim(cache_key, -10, -1)
 
-        await self.redis_client.expire(cache_key, 4800)
+        await self.redis_client.expire(cache_key, 3600)
 
 

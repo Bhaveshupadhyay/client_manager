@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Column, String, Integer, Text, ForeignKey, DateTime, Enum, UniqueConstraint,Boolean,Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship,Mapped, mapped_column
-from backend.database import Base
+from backend.client import Base
 
 
 class AccountType(str, enum.Enum):

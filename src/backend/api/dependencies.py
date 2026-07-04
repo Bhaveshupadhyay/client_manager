@@ -1,11 +1,12 @@
 from functools import lru_cache
 from typing import Generator
-from backend.database import get_postgres_client, get_cosmos_client, get_redis_client
+from backend.client import get_postgres_client, get_cosmos_client, get_redis_client, get_qdrant_client
 from fastapi import Security, HTTPException, status, Depends,Header,Request
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session, joinedload
 from backend.models.account import Account, APIKeyModel
 from backend.services.chat_service import ChatService
+from backend.services.file_service import FileService
 from backend.services.llm_provider import LLmProvider, GeminiLLmProvider
 from backend.services.project_service import ProjectService
 
@@ -44,6 +45,9 @@ def get_chat_service() -> ChatService:
     redis_client = get_redis_client()
 
     return ChatService(redis_client=redis_client)
+
+def get_file_service() -> FileService:
+    return FileService(qdrant_client=get_qdrant_client(),llm_provider=get_llm_provider())
 
 def get_current_account(
         api_key: str = Security(api_key_header),

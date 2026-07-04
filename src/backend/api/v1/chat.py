@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from backend.models.account import Account
 from backend.schemas.chat import ChatResponse, ChatRequest, ChatMessage
 from backend.api.dependencies import get_current_account, get_llm_provider, get_project_service,get_chat_service
@@ -11,6 +11,7 @@ router = APIRouter(prefix='/chat', tags=['Chat'])
 
 @router.post('/', response_model=ChatResponse)
 async def chat(chat_request: ChatRequest,
+               file: UploadFile|None=None,
          account: Account = Depends(get_current_account),
          llm:LLmProvider = Depends(get_llm_provider),
          project_service: ProjectService = Depends(get_project_service),
