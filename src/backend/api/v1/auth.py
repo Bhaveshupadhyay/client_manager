@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from backend.schemas.user import UserLogin, TokenResponse
 from backend.services.auth_service import authenticate_user
 from backend.core.security import create_access_token
-from backend.api.dependencies import get_db
+from backend.core.dependencies import get_db
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

@@ -1,11 +1,12 @@
 from functools import lru_cache
 from typing import Generator
-from backend.client import get_postgres_client, get_cosmos_client, get_redis_client
-from fastapi import Security, HTTPException, status, Depends,Header,Request
+from backend.core.client import get_postgres_client, get_cosmos_client, get_redis_client, get_qdrant_client
+from fastapi import Security, HTTPException, status, Depends
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session, joinedload
 from backend.models.account import Account, APIKeyModel
 from backend.repository.chat_repository import ChatRepository
+from backend.repository.file_repository import FileRepository
 from backend.services.chat_service import ChatService
 from backend.services.embeddings_provider import EmbeddingsProvider, FastEmbeddingProvider
 from backend.services.file_service import FileService
@@ -48,13 +49,17 @@ def get_project_service() -> ProjectService:
 
 @lru_cache
 def get_chat_service() -> ChatService:
-    redis_client = get_redis_client()
-
-    return ChatService(redis_client=redis_client)
+    return ChatService(project_service=get_project_service(),chat_repository=get_chat_repository(),llm_provider=get_llm_provider(),)
 
 @lru_cache
 def get_file_service() -> FileService:
-    return FileService(qdrant_client=get_qdrant_client(),embeddings_provider=get_embedding_provider())
+    return FileService(file_repository=get_file_repository())
+
+def get_chat_repository() -> ChatRepository:
+    return ChatRepository(redis_client=get_redis_client())
+
+def get_file_repository() -> FileRepository:
+    return FileRepository(qdrant_client=get_qdrant_client(),embeddings_provider=get_embedding_provider(),collection_name="client_conversations")
 
 
 def get_current_account(

@@ -1,25 +1,20 @@
 import os
-import uuid
 
 from fastapi import UploadFile, HTTPException
-from datetime import datetime, timedelta, UTC, timezone
+from datetime import datetime, timedelta, UTC
 from PIL import Image
 import pytesseract
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from qdrant_client import QdrantClient, models
-from qdrant_client.http.models import PointStruct
 
-from backend.schemas.qdrant import QdrantPayload, PayloadStatus
-from backend.services.embeddings_provider import EmbeddingsProvider
-
-COLLECTION_NAME= 'client_conversations'
+from backend.repository.file_repository import FileRepository
+from backend.schemas.file import FileCheckResponse
+from backend.schemas.qdrant import QdrantPayload, PayloadStatus, UploadedFileResponse
 
 class FileService:
-    def __init__(self,qdrant_client:QdrantClient,embeddings_provider:EmbeddingsProvider):
-        self.qdrant_client = qdrant_client
-        self.embeddings_provider = embeddings_provider
+    def __init__(self,file_repository: FileRepository):
+        self.file_repository = file_repository
 
     async def convert_to_chunks(self, file: UploadFile,project_id:str) -> list[QdrantPayload]:
         if file.size and file.size > 5*1024*1024:
@@ -76,117 +71,30 @@ class FileService:
                 os.remove(temp_file_path)
 
 
-    async def upload_to_qdrant(self, payloads:list[QdrantPayload]):
-
+    async def upload_file(self, overwrite: bool, file: UploadFile, project_id:str):
         try:
+            if overwrite:
+                self.file_repository.delete_file(document_name=file.filename, project_id=project_id)
 
-            chunks= [payload.text_chunk for payload in payloads]
-            dense_embeddings =  self.embeddings_provider.generate_dense_embeddings(chunks)
-            sparse_embeddings =  self.embeddings_provider.generate_sparse_embeddings(chunks)
+            payloads = await self.convert_to_chunks(file, project_id)
+            await self.file_repository.upload_to_qdrant(payloads=payloads)
 
-            points_to_upsert = []
-
-            for i, payload in enumerate(payloads):
-                point_id = str(uuid.uuid4())
-
-                single_sparse = models.SparseVector(
-                    indices=sparse_embeddings[i].indices,
-                    values=sparse_embeddings[i].values
-                )
-                points_to_upsert.append(
-                    PointStruct(
-                        id=point_id,
-                        vector={
-                            "dense": dense_embeddings[i],
-                            "sparse": single_sparse
-                        },
-                        payload=payload.model_dump()
-                    )
+            if payloads:
+                return UploadedFileResponse(
+                    document_name=payloads[0].document_name,
+                    payloadStatus=payloads[0].status,
                 )
 
-
-            self.qdrant_client.upsert(
-                collection_name=COLLECTION_NAME,
-                points=points_to_upsert
-            )
         except Exception as e:
-            raise e
+            raise HTTPException(status_code=500, detail="Unable to process file")
 
 
-    async def update_document_status_to_active(self, document_name: str, project_id: str):
-
-        try:
-            self.qdrant_client.set_payload(
-                collection_name=COLLECTION_NAME,
-                payload={
-                    "status": PayloadStatus.ACTIVE.value,
-                    "last_edited": datetime.now(timezone.utc).isoformat()
-                },
-                points=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="document_name",
-                            match=models.MatchValue(value=document_name)
-                        ),
-                        models.FieldCondition(
-                            key="project_id",
-                            match=models.MatchValue(value=project_id)
-                        )
-                    ]
-                )
+    def check_if_file_exists(self, filename: str|None, project_id: str)->FileCheckResponse:
+        is_file_exist= self.file_repository.delete_file(document_name=filename, project_id=project_id)
+        if is_file_exist:
+            return FileCheckResponse(
+                exists=True,
+                message=f"'{filename}' already exists. Do you want to overwrite it?"
             )
 
-        except Exception as e:
-            raise e
-
-
-    def check_if_file_exists(self, filename: str|None, project_id: str)->bool:
-        if filename is None:
-            return False
-        try:
-            file, _ = self.qdrant_client.scroll(
-                collection_name=COLLECTION_NAME,
-                scroll_filter=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="document_name",
-                            match=models.MatchValue(value=filename),
-                        ),
-                        models.FieldCondition(
-                            key="project_id",
-                            match=models.MatchValue(value=project_id),
-                        )
-                    ]
-                ),
-                limit=1,
-                with_payload=False,
-                with_vectors=False
-            )
-
-            return True if file else False
-
-        except Exception as e:
-            raise e
-
-    def delete_file(self, document_name: str|None, project_id: str):
-        if document_name is None:
-            raise ValueError("document name cannot be None")
-        try:
-            self.qdrant_client.delete(
-                collection_name=COLLECTION_NAME,
-                points_selector=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="document_name",
-                            match=models.MatchValue(value=document_name)
-                        ),
-                        models.FieldCondition(
-                            key="project_id",
-                            match=models.MatchValue(value=project_id)
-                        )
-                    ]
-                )
-            )
-
-        except Exception as e:
-            raise e
+        return FileCheckResponse(exists=False, message="Ready for upload.")
