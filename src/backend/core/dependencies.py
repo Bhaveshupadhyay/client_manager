@@ -9,7 +9,7 @@ from backend.repository.chat_repository import ChatRepository
 from backend.repository.file_repository import FileRepository
 from backend.services.chat_service import ChatService
 from backend.services.embeddings_provider import SparseEmbeddingsProvider, FastEmbeddingProviderSparse, \
-    DenseEmbeddingsProvider, GeminiDenseEmbeddingsProvider
+    DenseEmbeddingsProvider, GeminiDenseEmbeddingsProvider, HuggingFaceProviderSparse
 from backend.services.file_service import FileService
 from backend.services.llm_provider import LLmProvider, GeminiLLmProvider
 from backend.services.project_service import ProjectService
@@ -39,11 +39,9 @@ def get_client_project_container():
 def get_llm_provider() -> LLmProvider:
     return GeminiLLmProvider()
 
-@lru_cache
 def get_sparse_embedding_provider() -> SparseEmbeddingsProvider:
-    return FastEmbeddingProviderSparse()
+    return HuggingFaceProviderSparse()
 
-@lru_cache
 def get_dense_embedding_provider() -> DenseEmbeddingsProvider:
     return GeminiDenseEmbeddingsProvider()
 

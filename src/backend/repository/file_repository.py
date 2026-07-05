@@ -21,7 +21,7 @@ class FileRepository:
 
             chunks= [payload.text_chunk for payload in payloads]
             dense_embeddings =  self.dense_embedding_provider.generate_dense_embeddings(chunks)
-            sparse_embeddings =  self.sparse_embeddings_provider.generate_sparse_embeddings(chunks)
+            sparse_embeddings =  await self.sparse_embeddings_provider.generate_sparse_embeddings(chunks)
 
             points_to_upsert = []
 
