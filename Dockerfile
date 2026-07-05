@@ -12,7 +12,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # Set environment variables for FastEmbed/HuggingFace cache paths
-ENV HF_HOME=/app/cache
+ENV FASTEMBED_CACHE_PATH=/app/cache
 
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
@@ -21,9 +21,9 @@ COPY pyproject.toml uv.lock ./
 RUN uv pip install --system --no-cache-dir -r pyproject.toml
 
 # ---- MODEL WARMUP STEP ----
-# Copy ONLY your download script first to keep build layers cached efficiently
-COPY download_models.py ./
-RUN python download_models.py
+# Copy ONLY download script first to keep build layers cached efficiently
+COPY src/llm_models/download_models.py ./src/llm_models/
+RUN python src/llm_models/download_models.py
 
 
 COPY . .
