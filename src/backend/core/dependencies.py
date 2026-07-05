@@ -8,8 +8,7 @@ from backend.models.account import Account, APIKeyModel
 from backend.repository.chat_repository import ChatRepository
 from backend.repository.file_repository import FileRepository
 from backend.services.chat_service import ChatService
-from backend.services.embeddings_provider import SparseEmbeddingsProvider, FastEmbeddingProviderSparse, \
-    DenseEmbeddingsProvider, GeminiDenseEmbeddingsProvider, HuggingFaceProviderSparse
+from backend.services.embeddings_provider import SparseEmbeddingsProvider,DenseEmbeddingsProvider, GeminiDenseEmbeddingsProvider, HuggingFaceProviderSparse
 from backend.services.file_service import FileService
 from backend.services.llm_provider import LLmProvider, GeminiLLmProvider
 from backend.services.project_service import ProjectService
