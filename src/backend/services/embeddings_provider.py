@@ -2,20 +2,25 @@ from abc import ABC, abstractmethod
 
 from fastembed import SparseTextEmbedding, TextEmbedding
 from fastembed.common.model_description import PoolingType, ModelSource
+from google import genai
+from google.genai import types
 
 from backend.schemas.qdrant import SparseModelResponse
 
-class EmbeddingsProvider(ABC):
+class DenseEmbeddingsProvider(ABC):
+
     @abstractmethod
     def generate_dense_embeddings(self, text: list[str]):
         pass
+
+class SparseEmbeddingsProvider(ABC):
 
     @abstractmethod
     def generate_sparse_embeddings(self, text: list[str]):
         pass
 
 
-class FastEmbeddingProvider(EmbeddingsProvider):
+class FastEmbeddingProviderSparse(SparseEmbeddingsProvider):
     def __init__(self):
         TextEmbedding.add_custom_model(
             model="intfloat/multilingual-e5-small",
@@ -29,12 +34,6 @@ class FastEmbeddingProvider(EmbeddingsProvider):
         self.sparse_model = SparseTextEmbedding(model_name="prithvida/Splade_PP_en_v1")
 
 
-    def generate_dense_embeddings(self, text: list[str])-> list[list[float]]:
-        try:
-            return [dense_embedding.tolist() for dense_embedding in self.dense_model.embed(text)]
-        except Exception as e:
-            raise e
-
     def generate_sparse_embeddings(self, text: list[str])->list[SparseModelResponse]:
         try:
             generator = self.sparse_model.embed(text)
@@ -43,5 +42,36 @@ class FastEmbeddingProvider(EmbeddingsProvider):
                 SparseModelResponse(indices=sparse.indices.tolist(), values=sparse.values.tolist())
                 for sparse in generator
             ]
+        except Exception as e:
+            raise e
+
+class GeminiDenseEmbeddingsProvider(DenseEmbeddingsProvider):
+    def __init__(self):
+        self.client = genai.Client()
+
+    def generate_dense_embeddings(self, text: list[str])-> list[list[float]]:
+        try:
+            contents = [
+                types.Content(parts=[types.Part.from_text(text=chunk)])
+                for chunk in text
+            ]
+            response = self.client.models.embed_content(
+                model='gemini-embedding-2',
+                contents=contents,
+                config=types.EmbedContentConfig(output_dimensionality=384)
+            )
+
+            if response.embeddings is None:
+                raise ValueError("Gemini API returned a null embedding for a text chunk.")
+
+            vectors: list[list[float]] = []
+
+            for embedding in response.embeddings:
+                if embedding.values is None:
+                    raise ValueError("Gemini API returned a null embedding for a text chunk.")
+
+                vectors.append(embedding.values)
+
+            return vectors
         except Exception as e:
             raise e
