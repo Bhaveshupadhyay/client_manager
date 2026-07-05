@@ -90,11 +90,3 @@ class GeminiLLmProvider(LLmProvider):
         )
 
         return ClientIntent.model_validate_json(response.text or "")
-
-    async def generate_embeddings(self, text:str)->list[float] | None:
-        response = self.client.models.embed_content(
-            model='text-embedding-004',
-            contents=text,
-        )
-        vector = response.embeddings[0].values
-        return vector

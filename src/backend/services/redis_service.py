@@ -3,7 +3,7 @@ import json
 import logging
 from functools import wraps
 from typing import Optional, Type, Any
-from backend.client import get_redis_client
+from backend.core.client import get_redis_client
 
 from pydantic import TypeAdapter
 

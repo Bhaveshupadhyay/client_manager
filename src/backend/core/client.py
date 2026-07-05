@@ -4,6 +4,7 @@ import urllib.parse
 from azure.cosmos.aio import CosmosClient
 from dotenv import load_dotenv
 from upstash_redis.asyncio import Redis
+from qdrant_client import QdrantClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -12,6 +13,7 @@ load_dotenv()
 _postgres_client: sessionmaker | None = None
 _redis_client: Redis | None = None
 _cosmos_client: CosmosClient | None = None
+_qdrant_client: QdrantClient | None = None
 Base = declarative_base()
 
 def get_postgres_client() -> sessionmaker:
@@ -45,7 +47,14 @@ def get_cosmos_client() -> CosmosClient:
         )
     return cosmos_client
 
-
+def get_qdrant_client() -> QdrantClient:
+    global _qdrant_client
+    if _qdrant_client is None:
+        qdrant_client = QdrantClient(
+            url=os.getenv("QDRANT_ENDPOINT"),
+            api_key=os.getenv("QDRANT_KEY"),
+        )
+    return qdrant_client
 def open_connection() -> None:
     get_cosmos_client()
     get_redis_client()

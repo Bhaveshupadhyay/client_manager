@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from backend.client import open_connection,close_connection
+from backend.core.client import open_connection,close_connection
 
 @asynccontextmanager
 async def app_lifespan(app: FastAPI):
