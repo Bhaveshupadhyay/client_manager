@@ -90,7 +90,7 @@ class FileService:
 
 
     def check_if_file_exists(self, filename: str|None, project_id: str)->FileCheckResponse:
-        is_file_exist= self.file_repository.delete_file(document_name=filename, project_id=project_id)
+        is_file_exist= self.file_repository.check_if_file_exists(filename=filename, project_id=project_id)
         if is_file_exist:
             return FileCheckResponse(
                 exists=True,
