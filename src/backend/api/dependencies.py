@@ -1,11 +1,13 @@
 from functools import lru_cache
 from typing import Generator
 from backend.client import get_postgres_client, get_cosmos_client, get_redis_client, get_qdrant_client
-from fastapi import Security, HTTPException, status, Depends,Header,Request
+from fastapi import Security, HTTPException, status, Depends
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.orm import Session, joinedload
 from backend.models.account import Account, APIKeyModel
+from backend.repository.chat_repository import ChatRepository
 from backend.services.chat_service import ChatService
+from backend.services.embeddings_provider import EmbeddingsProvider, FastEmbeddingProvider
 from backend.services.file_service import FileService
 from backend.services.llm_provider import LLmProvider, GeminiLLmProvider
 from backend.services.project_service import ProjectService
@@ -36,6 +38,10 @@ def get_llm_provider() -> LLmProvider:
     return GeminiLLmProvider()
 
 @lru_cache
+def get_embedding_provider() -> EmbeddingsProvider:
+    return FastEmbeddingProvider()
+
+@lru_cache
 def get_project_service() -> ProjectService:
     db_container = get_client_project_container()
     return ProjectService(db_container=db_container)
@@ -46,8 +52,10 @@ def get_chat_service() -> ChatService:
 
     return ChatService(redis_client=redis_client)
 
+@lru_cache
 def get_file_service() -> FileService:
-    return FileService(qdrant_client=get_qdrant_client(),llm_provider=get_llm_provider())
+    return FileService(qdrant_client=get_qdrant_client(),embeddings_provider=get_embedding_provider())
+
 
 def get_current_account(
         api_key: str = Security(api_key_header),

@@ -17,9 +17,6 @@ class LLmProvider(ABC):
     @abstractmethod
     async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage])->ClientIntent:
         pass
-    @abstractmethod
-    async def generate_embeddings(self, text:str)->list[float] | None:
-        pass
 
 class GeminiLLmProvider(LLmProvider):
     def __init__(self, model_name: str = "gemini-3.1-flash-lite"):
@@ -95,16 +92,3 @@ class GeminiLLmProvider(LLmProvider):
         )
 
         return ClientIntent.model_validate_json(response.text or "")
-
-    async def generate_embeddings(self, text:str)->list[float] | None:
-        try:
-            response = self.client.models.embed_content(
-                model='text-embedding-004',
-                contents=text,
-            )
-            if not response or not response.embeddings:
-                return None
-
-            return response.embeddings[0].values
-        except Exception as e:
-            return None
