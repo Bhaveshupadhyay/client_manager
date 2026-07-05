@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 
-from fastembed import SparseTextEmbedding, TextEmbedding
-from fastembed.common.model_description import PoolingType, ModelSource
+from fastembed import SparseTextEmbedding
 from google import genai
 from google.genai import types
 
@@ -22,15 +21,6 @@ class SparseEmbeddingsProvider(ABC):
 
 class FastEmbeddingProviderSparse(SparseEmbeddingsProvider):
     def __init__(self):
-        TextEmbedding.add_custom_model(
-            model="intfloat/multilingual-e5-small",
-            pooling=PoolingType.MEAN,
-            normalization=True,
-            sources=ModelSource(hf="intfloat/multilingual-e5-small"),
-            dim=384,
-            model_file="onnx/model.onnx"
-        )
-        self.dense_model = TextEmbedding(model_name="intfloat/multilingual-e5-small")
         self.sparse_model = SparseTextEmbedding(model_name="prithvida/Splade_PP_en_v1")
 
 
