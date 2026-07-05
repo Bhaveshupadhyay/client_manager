@@ -16,7 +16,7 @@ class FileService:
     def __init__(self,file_repository: FileRepository):
         self.file_repository = file_repository
 
-    async def convert_to_chunks(self, file: UploadFile,project_id:str) -> list[QdrantPayload]:
+    async def convert_to_chunks(self, file: UploadFile,project_id:str):
         if file.size and file.size > 5*1024*1024:
             raise HTTPException(status_code=400, detail="File too large.")
 
@@ -33,35 +33,43 @@ class FileService:
 
         try:
             file_extension = file.filename.split(".")[-1].lower() if file.filename is not None else ""
+            expiration_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
 
             if file_extension == "pdf":
                 loader = PyPDFLoader(temp_file_path)
-                documents = loader.load()
+
+                for page_doc in loader.lazy_load():
+                    page_chunks = text_splitter.split_documents([page_doc])
+                    for chunk in page_chunks:
+                        yield QdrantPayload(
+                            project_id=project_id,
+                            text_chunk=chunk.page_content,
+                            document_name=file.filename or f'file.{file_extension}',
+                            status=PayloadStatus.PENDING,
+                            last_edited=expiration_time
+                        )
 
             elif file_extension in ["jpg", "jpeg", "png"]:
-                extracted_text = pytesseract.image_to_string(Image.open(temp_file_path))
+                with Image.open(temp_file_path) as img:
+                    img.thumbnail((1920, 1920))
+                    extracted_text = pytesseract.image_to_string(img)
+
                 doc = Document(
                     page_content=extracted_text,
                     metadata={"source": file.filename, "page": 1}
                 )
-                documents = [doc]
+                chunks = text_splitter.split_documents([doc])
+                for chunk in chunks:
+                    yield QdrantPayload(
+                        project_id=project_id,
+                        text_chunk=chunk.page_content,
+                        document_name=file.filename or f'file.{file_extension}',
+                        status=PayloadStatus.PENDING,
+                        last_edited=expiration_time
+                    )
 
             else:
                 raise HTTPException(status_code=400, detail="Unsupported file type. Please upload PDF, JPG, or PNG.")
-
-            expiration_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
-
-            chunks = text_splitter.split_documents(documents)
-            payload = []
-            for i, chunk in enumerate(chunks):
-                payload.append(QdrantPayload(
-                    project_id=project_id,
-                    text_chunk=chunk.page_content,
-                    document_name=file.filename or f'file.{file_extension}',
-                    status=PayloadStatus.PENDING,
-                    last_edited=expiration_time))
-
-            return payload
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -76,14 +84,19 @@ class FileService:
             if overwrite:
                 self.file_repository.delete_file(document_name=file.filename, project_id=project_id)
 
-            payloads = await self.convert_to_chunks(file, project_id)
+            payloads = []
+            async for payload in self.convert_to_chunks(file, project_id):
+                payloads.append(payload)
+
+            if not payloads:
+                raise HTTPException(status_code=400, detail="No readable text found in file.")
+
             await self.file_repository.upload_to_qdrant(payloads=payloads)
 
-            if payloads:
-                return UploadedFileResponse(
-                    document_name=payloads[0].document_name,
-                    payloadStatus=payloads[0].status,
-                )
+            return UploadedFileResponse(
+                document_name=payloads[0].document_name,
+                payloadStatus=payloads[0].status,
+            )
 
         except Exception as e:
             raise HTTPException(status_code=500, detail="Unable to process file")
