@@ -3,15 +3,15 @@ import urllib.parse
 
 from azure.cosmos.aio import CosmosClient
 from dotenv import load_dotenv
+from upstash_redis.asyncio import Redis
 from qdrant_client import QdrantClient
-from redis.asyncio import RedisCluster
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
 _postgres_client: sessionmaker | None = None
-_redis_client: RedisCluster | None = None
+_redis_client: Redis | None = None
 _cosmos_client: CosmosClient | None = None
 _qdrant_client: QdrantClient | None = None
 Base = declarative_base()
@@ -32,17 +32,10 @@ def get_postgres_client() -> sessionmaker:
     return _postgres_client
 
 
-def get_redis_client() -> RedisCluster:
+def get_redis_client() -> Redis:
     global _redis_client
     if _redis_client is None:
-        _redis_client= RedisCluster(
-            host=os.getenv("AZURE_REDIS_ENDPOINT"),
-            port=10000,
-            password=os.getenv("AZURE_REDIS_KEY"),
-            ssl=True,
-            ssl_cert_reqs="none",
-            decode_responses=True
-        )
+        _redis_client = Redis.from_env()
     return _redis_client
 
 def get_cosmos_client() -> CosmosClient:
