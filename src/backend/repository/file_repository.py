@@ -5,13 +5,14 @@ from qdrant_client import QdrantClient, models
 from qdrant_client.http.models import PointStruct
 
 from backend.schemas.qdrant import QdrantPayload, PayloadStatus
-from backend.services.embeddings_provider import EmbeddingsProvider
+from backend.services.embeddings_provider import SparseEmbeddingsProvider, DenseEmbeddingsProvider
 
 
 class FileRepository:
-    def __init__(self, qdrant_client: QdrantClient, embeddings_provider: EmbeddingsProvider, collection_name: str):
+    def __init__(self, qdrant_client: QdrantClient, dense_embedding_provider: DenseEmbeddingsProvider,sparse_embeddings_provider: SparseEmbeddingsProvider, collection_name: str):
         self.qdrant_client = qdrant_client
-        self.embeddings_provider = embeddings_provider
+        self.dense_embedding_provider = dense_embedding_provider
+        self.sparse_embeddings_provider = sparse_embeddings_provider
         self.collection_name = collection_name
 
     async def upload_to_qdrant(self, payloads:list[QdrantPayload]):
@@ -19,8 +20,8 @@ class FileRepository:
         try:
 
             chunks= [payload.text_chunk for payload in payloads]
-            dense_embeddings =  self.embeddings_provider.generate_dense_embeddings(chunks)
-            sparse_embeddings =  self.embeddings_provider.generate_sparse_embeddings(chunks)
+            dense_embeddings =  self.dense_embedding_provider.generate_dense_embeddings(chunks)
+            sparse_embeddings =  self.sparse_embeddings_provider.generate_sparse_embeddings(chunks)
 
             points_to_upsert = []
 

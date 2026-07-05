@@ -8,7 +8,8 @@ from backend.models.account import Account, APIKeyModel
 from backend.repository.chat_repository import ChatRepository
 from backend.repository.file_repository import FileRepository
 from backend.services.chat_service import ChatService
-from backend.services.embeddings_provider import EmbeddingsProvider, FastEmbeddingProvider
+from backend.services.embeddings_provider import SparseEmbeddingsProvider, FastEmbeddingProviderSparse, \
+    DenseEmbeddingsProvider, GeminiDenseEmbeddingsProvider
 from backend.services.file_service import FileService
 from backend.services.llm_provider import LLmProvider, GeminiLLmProvider
 from backend.services.project_service import ProjectService
@@ -39,8 +40,12 @@ def get_llm_provider() -> LLmProvider:
     return GeminiLLmProvider()
 
 @lru_cache
-def get_embedding_provider() -> EmbeddingsProvider:
-    return FastEmbeddingProvider()
+def get_sparse_embedding_provider() -> SparseEmbeddingsProvider:
+    return FastEmbeddingProviderSparse()
+
+@lru_cache
+def get_dense_embedding_provider() -> DenseEmbeddingsProvider:
+    return GeminiDenseEmbeddingsProvider()
 
 @lru_cache
 def get_project_service() -> ProjectService:
@@ -59,7 +64,10 @@ def get_chat_repository() -> ChatRepository:
     return ChatRepository(redis_client=get_redis_client())
 
 def get_file_repository() -> FileRepository:
-    return FileRepository(qdrant_client=get_qdrant_client(),embeddings_provider=get_embedding_provider(),collection_name="client_conversations")
+    return FileRepository(qdrant_client=get_qdrant_client(),
+                          dense_embedding_provider=get_dense_embedding_provider(),
+                          sparse_embeddings_provider=get_sparse_embedding_provider(),
+                          collection_name="client_conversations")
 
 
 def get_current_account(
