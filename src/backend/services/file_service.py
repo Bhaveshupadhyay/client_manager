@@ -132,7 +132,9 @@ class FileService:
             if overwrite:
                 self.file_repository.delete_file(document_name=file.filename, project_id=project_id)
 
-            payloads = await self.convert_to_chunks_online(file, project_id)
+            payloads = []
+            async for payload in self.convert_to_chunks(file, project_id):
+                payloads.append(payload)
 
             if not payloads:
                 raise HTTPException(status_code=400, detail="No readable text found in file.")
