@@ -1,21 +1,24 @@
 from fastapi import HTTPException
 
+from backend.models.llm import IntentType, LLMResponse
 from backend.repository.chat_repository import ChatRepository
+from backend.repository.project_repository import ProjectRepository
 from backend.schemas.chat import ChatMessage, ChatRequest, ChatResponse
 from backend.services.llm_provider import LLmProvider
 from backend.services.project_service import ProjectService
 
 
 class ChatService:
-    def __init__(self, project_service: ProjectService,llm_provider:LLmProvider, chat_repository: ChatRepository):
+    def __init__(self, project_service: ProjectService,project_repository: ProjectRepository,llm_provider:LLmProvider, chat_repository: ChatRepository):
         self.project_service = project_service
+        self.project_repository = project_repository
         self.llm_provider = llm_provider
         self.chat_repository = chat_repository
 
 
     async def chat(self,chat_request: ChatRequest):
         try:
-            project_details= await self.project_service.get_project_details(project_id=chat_request.project_id)
+            project_details= await self.project_repository.get_project_details(project_id=chat_request.project_id)
 
             old_chats= await self.chat_repository.get_old_chats(project_id=chat_request.project_id)
 
@@ -33,6 +36,4 @@ class ChatService:
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f'An error occurred while generating the LLM: {e}')
-
-
 

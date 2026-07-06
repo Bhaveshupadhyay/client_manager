@@ -7,7 +7,7 @@ import logging
 from google import genai
 from google.genai import types
 
-from backend.models.llm import ClientIntent
+from backend.models.llm import LLMResponse
 from backend.schemas.chat import ChatMessage
 
 logger = logging.getLogger(__name__)
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class LLmProvider(ABC):
     @abstractmethod
-    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage])->ClientIntent:
+    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage])->LLMResponse:
         pass
 
 class GeminiLLmProvider(LLmProvider):
@@ -36,14 +36,16 @@ class GeminiLLmProvider(LLmProvider):
         - `reset_requirements`: Use when the client disagrees with the AI's suggested requirements or requests modifications to the proposed feature set. You must output the COMPLETE, newly adjusted list of requirements.
         - `update_tech_stack`: Use when a change in requirements necessitates a change in the required technologies (e.g., they initially wanted just an app so tech was Flutter/Python, but now they want a web app too, so the tech stack becomes Flutter, Python, and React/Javascript).
         - `general_faq`: Use when the user asks general questions about past projects, services, or initial greetings without specific project details.
-        - query_cost_estimate: Use when the user asks for the current estimated cost of their project.
+        - `query_cost_estimate`: Use when the user asks for the current estimated cost of their project.
+        - `found_project_id`: Use when the user explicitly mentions or provides an existing project ID in their message. You must extract this ID into the `project_id` field.
         
         CONVERSATIONAL RULES (CRITICAL):
         - NEVER reject a project outright based on a low budget.
         - NEVER mention the agency's standard minimum charges.
         - COST DISCLOSURE OVERRIDE: If the user asks for the cost, check the `estimated_cost` in the CURRENT PROJECT STATE. If it is greater than 0, you MUST explicitly tell the user that exact amount. Do not deflect.
         - HANDLING BUDGET MISMATCHES: If you reveal an `estimated_cost` that is significantly higher than the `client_budget` (e.g., a $135k estimate for a $100 budget), politely explain that the cost is driven by their current `agreed_requirements`. Immediately ask if they would like to remove features or reduce the scope to lower the price.
-        - REQUIREMENT GATHERING: If the `estimated_cost` is 0 or missing, politely acknowledge their message and IMMEDIATELY ask them to elaborate on their technical requirements, features, and overall project goals before any pricing is discussed.
+        - MISSING PROJECT CONTEXT: If the current project details (such as `requirements`, `estimated_cost`, or `budget`) are entirely unknown or empty, politely ask the user if they would like to start a new project or, if they are returning, to provide their existing `project_id` so you can retrieve their details. 
+        - REQUIREMENT GATHERING: If starting a new project (or if the `estimated_cost` is 0/missing after confirming no project ID), politely acknowledge their message and IMMEDIATELY ask them to elaborate on their technical requirements, features, and overall project goals before any pricing is discussed.
         - If a client asks to build an app similar to an existing, well-known app, use your internal knowledge to list the core functionalities of the specific app they requested. Then, ask the client which of those specific features they want in their version, and if they require any custom additions.
         - If the client agrees with all proposed requirements, list ALL the agreed-upon requirements in the `requirements` parameter.
         
@@ -53,7 +55,7 @@ class GeminiLLmProvider(LLmProvider):
 
         self.model_name = model_name
 
-    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage])->ClientIntent:
+    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage])->LLMResponse:
         gemini_content=[]
         dynamic_system_instruction = self.detailed_instructions
 
@@ -79,7 +81,7 @@ class GeminiLLmProvider(LLmProvider):
         })
         config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=ClientIntent,
+            response_schema=LLMResponse,
             system_instruction=dynamic_system_instruction,
             temperature=0.1
         )
@@ -89,4 +91,4 @@ class GeminiLLmProvider(LLmProvider):
             config=config
         )
 
-        return ClientIntent.model_validate_json(response.text or "")
+        return LLMResponse.model_validate_json(response.text or "")

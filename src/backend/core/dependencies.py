@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from backend.models.account import Account, APIKeyModel
 from backend.repository.chat_repository import ChatRepository
 from backend.repository.file_repository import FileRepository
+from backend.repository.project_repository import ProjectRepository
 from backend.services.chat_service import ChatService
 from backend.services.embeddings_provider import SparseEmbeddingsProvider,DenseEmbeddingsProvider, GeminiDenseEmbeddingsProvider, HuggingFaceProviderSparse
 from backend.services.file_service import FileService
@@ -46,12 +47,15 @@ def get_dense_embedding_provider() -> DenseEmbeddingsProvider:
 
 @lru_cache
 def get_project_service() -> ProjectService:
-    db_container = get_client_project_container()
-    return ProjectService(db_container=db_container)
+    return ProjectService(project_repository=get_project_repository())
 
 @lru_cache
 def get_chat_service() -> ChatService:
-    return ChatService(project_service=get_project_service(),chat_repository=get_chat_repository(),llm_provider=get_llm_provider(),)
+    return ChatService(project_service=get_project_service(),
+                       project_repository=get_project_repository(),
+                       chat_repository=get_chat_repository(),
+                       llm_provider=get_llm_provider(),
+                       )
 
 @lru_cache
 def get_file_service() -> FileService:
@@ -59,6 +63,10 @@ def get_file_service() -> FileService:
 
 def get_chat_repository() -> ChatRepository:
     return ChatRepository(redis_client=get_redis_client())
+
+def get_project_repository() -> ProjectRepository:
+    db_container = get_client_project_container()
+    return ProjectRepository(cosmos_db_container=db_container)
 
 def get_file_repository() -> FileRepository:
     return FileRepository(qdrant_client=get_qdrant_client(),
