@@ -1,3 +1,6 @@
+import logging
+import traceback
+
 from fastapi import HTTPException
 
 from backend.repository.chat_repository import ChatRepository
@@ -5,6 +8,7 @@ from backend.schemas.chat import ChatMessage, ChatRequest, ChatResponse
 from backend.services.llm_provider import LLmProvider
 from backend.services.project_service import ProjectService
 
+logger = logging.getLogger(__name__)
 
 class ChatService:
     def __init__(self, project_service: ProjectService,llm_provider:LLmProvider, chat_repository: ChatRepository):
@@ -32,6 +36,7 @@ class ChatService:
             return ChatResponse(message=llm_response.text, name=chat_request.client_name)
 
         except Exception as e:
+            logger.error(traceback.format_exc())
             raise HTTPException(status_code=500, detail=f'An error occurred while generating the LLM: {e}')
 
 
