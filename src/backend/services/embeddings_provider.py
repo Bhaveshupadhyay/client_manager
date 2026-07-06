@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 
 import httpx
-import requests
-from fastembed import SparseTextEmbedding
 from google import genai
 from google.genai import types
 
@@ -20,23 +18,6 @@ class SparseEmbeddingsProvider(ABC):
     @abstractmethod
     async def generate_sparse_embeddings(self, text: list[str]):
         pass
-
-
-class FastEmbeddingProviderSparse(SparseEmbeddingsProvider):
-    def __init__(self):
-        self.sparse_model = SparseTextEmbedding(model_name="prithvida/Splade_PP_en_v1")
-
-
-    async def generate_sparse_embeddings(self, text: list[str])->list[SparseModelResponse]:
-        try:
-            generator = self.sparse_model.embed(text)
-
-            return [
-                SparseModelResponse(indices=sparse.indices.tolist(), values=sparse.values.tolist())
-                for sparse in generator
-            ]
-        except Exception as e:
-            raise e
 
 class HuggingFaceProviderSparse(SparseEmbeddingsProvider):
     def __init__(self):

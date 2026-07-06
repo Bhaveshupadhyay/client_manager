@@ -3,8 +3,7 @@ import os
 import httpx
 from fastapi import UploadFile, HTTPException
 from datetime import datetime, timedelta, UTC
-from PIL import Image
-import pytesseract
+
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -19,67 +18,67 @@ class FileService:
         self.hf_url=f"https://{config.HUGGING_FACE_USER_NAME}-{config.HUGGING_FACE_SPACE}.hf.space/parse_file"
         self.file_repository = file_repository
 
-    async def convert_to_chunks(self, file: UploadFile,project_id:str):
-        if file.size and file.size > 5*1024*1024:
-            raise HTTPException(status_code=400, detail="File too large.")
-
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200,
-            length_function=len,
-        )
-
-        temp_file_path = f"temp_{file.filename}"
-        with open(temp_file_path, "wb") as buffer:
-            while chunk := await file.read(1024 * 1024):
-                buffer.write(chunk)
-
-        try:
-            file_extension = file.filename.split(".")[-1].lower() if file.filename is not None else ""
-            expiration_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
-
-            if file_extension == "pdf":
-                loader = PyPDFLoader(temp_file_path)
-
-                for page_doc in loader.lazy_load():
-                    page_chunks = text_splitter.split_documents([page_doc])
-                    for chunk in page_chunks:
-                        yield QdrantPayload(
-                            project_id=project_id,
-                            text_chunk=chunk.page_content,
-                            document_name=file.filename or f'file.{file_extension}',
-                            status=PayloadStatus.PENDING,
-                            last_edited=expiration_time
-                        )
-
-            elif file_extension in ["jpg", "jpeg", "png"]:
-                with Image.open(temp_file_path) as img:
-                    img.thumbnail((1920, 1920))
-                    extracted_text = pytesseract.image_to_string(img)
-
-                doc = Document(
-                    page_content=extracted_text,
-                    metadata={"source": file.filename, "page": 1}
-                )
-                chunks = text_splitter.split_documents([doc])
-                for chunk in chunks:
-                    yield QdrantPayload(
-                        project_id=project_id,
-                        text_chunk=chunk.page_content,
-                        document_name=file.filename or f'file.{file_extension}',
-                        status=PayloadStatus.PENDING,
-                        last_edited=expiration_time
-                    )
-
-            else:
-                raise HTTPException(status_code=400, detail="Unsupported file type. Please upload PDF, JPG, or PNG.")
-
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
-
-        finally:
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
+    # async def convert_to_chunks(self, file: UploadFile,project_id:str):
+    #     if file.size and file.size > 5*1024*1024:
+    #         raise HTTPException(status_code=400, detail="File too large.")
+    #
+    #     text_splitter = RecursiveCharacterTextSplitter(
+    #         chunk_size=1000,
+    #         chunk_overlap=200,
+    #         length_function=len,
+    #     )
+    #
+    #     temp_file_path = f"temp_{file.filename}"
+    #     with open(temp_file_path, "wb") as buffer:
+    #         while chunk := await file.read(1024 * 1024):
+    #             buffer.write(chunk)
+    #
+    #     try:
+    #         file_extension = file.filename.split(".")[-1].lower() if file.filename is not None else ""
+    #         expiration_time = (datetime.now(UTC) + timedelta(hours=2)).isoformat()
+    #
+    #         if file_extension == "pdf":
+    #             loader = PyPDFLoader(temp_file_path)
+    #
+    #             for page_doc in loader.lazy_load():
+    #                 page_chunks = text_splitter.split_documents([page_doc])
+    #                 for chunk in page_chunks:
+    #                     yield QdrantPayload(
+    #                         project_id=project_id,
+    #                         text_chunk=chunk.page_content,
+    #                         document_name=file.filename or f'file.{file_extension}',
+    #                         status=PayloadStatus.PENDING,
+    #                         last_edited=expiration_time
+    #                     )
+    #
+    #         elif file_extension in ["jpg", "jpeg", "png"]:
+    #             with Image.open(temp_file_path) as img:
+    #                 img.thumbnail((1920, 1920))
+    #                 extracted_text = pytesseract.image_to_string(img)
+    #
+    #             doc = Document(
+    #                 page_content=extracted_text,
+    #                 metadata={"source": file.filename, "page": 1}
+    #             )
+    #             chunks = text_splitter.split_documents([doc])
+    #             for chunk in chunks:
+    #                 yield QdrantPayload(
+    #                     project_id=project_id,
+    #                     text_chunk=chunk.page_content,
+    #                     document_name=file.filename or f'file.{file_extension}',
+    #                     status=PayloadStatus.PENDING,
+    #                     last_edited=expiration_time
+    #                 )
+    #
+    #         else:
+    #             raise HTTPException(status_code=400, detail="Unsupported file type. Please upload PDF, JPG, or PNG.")
+    #
+    #     except Exception as e:
+    #         raise HTTPException(status_code=500, detail=str(e))
+    #
+    #     finally:
+    #         if os.path.exists(temp_file_path):
+    #             os.remove(temp_file_path)
 
     async def convert_to_chunks_online(self, file: UploadFile,project_id:str):
         if file.size and file.size > 5*1024*1024:
