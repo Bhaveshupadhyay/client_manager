@@ -1,6 +1,5 @@
 from fastapi import HTTPException
 
-from backend.models.llm import IntentType, LLMResponse
 from backend.repository.chat_repository import ChatRepository
 from backend.repository.project_repository import ProjectRepository
 from backend.schemas.chat import ChatMessage, ChatRequest, ChatResponse
