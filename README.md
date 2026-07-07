@@ -2,7 +2,7 @@
 
 An autonomous, multi-agent platform designed to act as a virtual employee for freelancers, agencies, and software development companies. 
 Visit: https://chat.clientmanger.tech
-<img width="1120" height="791" alt="Screenshot 2026-06-26 at 5 13 47 PM" src="https://github.com/user-attachments/assets/60edcfd1-c45e-4244-91ea-71bb3cdcc604" />
+<img width="1120" height="791" alt="Screenshot 2026-07-07 at 7 13 45 AM" src="https://github.com/user-attachments/assets/15f6aaf8-9895-4a32-8f77-a7a6338d4366" />
 
 The AI Client Operations Manager seamlessly assumes the roles of an Account Manager, Project Coordinator, and Client Success Representative. By automating client communication, requirement gathering, project estimation, and team capacity planning, this system drastically reduces operational overhead while delivering instant, intelligent responses to clients.
 
