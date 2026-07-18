@@ -1,14 +1,12 @@
-import os
 import urllib.parse
 
 from azure.cosmos.aio import CosmosClient
-from dotenv import load_dotenv
 from upstash_redis.asyncio import Redis
 from qdrant_client import QdrantClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-load_dotenv()
+from backend.core.config import config
 
 _postgres_client: sessionmaker | None = None
 _redis_client: Redis | None = None
@@ -19,10 +17,10 @@ Base = declarative_base()
 def get_postgres_client() -> sessionmaker:
     global _postgres_client
     if _postgres_client is None:
-        raw_password = os.getenv("POSTGRES_DB_PASSWORD", "")
+        raw_password = config.POSTGRES_DB_PASSWORD
         encoded_password = urllib.parse.quote_plus(raw_password)
 
-        DB_HOST = os.getenv("POSTGRES_DB_HOST", "")
+        DB_HOST = config.POSTGRES_DB_HOST
 
         SQLALCHEMY_DATABASE_URL = f"postgresql://postgres.ksvunxoiwtrsvujhkpxx:{encoded_password}@{DB_HOST}:5432/postgres?sslmode=require"
 
@@ -42,8 +40,8 @@ def get_cosmos_client() -> CosmosClient:
     global _cosmos_client
     if _cosmos_client is None:
         cosmos_client = CosmosClient(
-            os.getenv("COSMOS_ENDPOINT"),
-            credential=os.getenv("COSMOS_KEY")
+            config.COSMOS_ENDPOINT,
+            credential=config.COSMOS_KEY
         )
     return cosmos_client
 
@@ -51,8 +49,8 @@ def get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     if _qdrant_client is None:
         qdrant_client = QdrantClient(
-            url=os.getenv("QDRANT_ENDPOINT"),
-            api_key=os.getenv("QDRANT_KEY"),
+            url=config.QDRANT_ENDPOINT,
+            api_key=config.QDRANT_KEY,
         )
     return qdrant_client
 def open_connection() -> None:

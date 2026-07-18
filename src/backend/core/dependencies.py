@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Generator
+from backend.core.config import config
 from backend.core.client import get_postgres_client, get_cosmos_client, get_redis_client, get_qdrant_client
 from fastapi import Security, HTTPException, status, Depends
 from fastapi.security.api_key import APIKeyHeader
@@ -30,7 +31,7 @@ def get_db() -> Generator:
 def get_client_project_container():
     try:
         cosmos_client = get_cosmos_client()
-        database = cosmos_client.get_database_client('ai-client-manager')
+        database = cosmos_client.get_database_client(config.COSMOS_DATABASE)
         container = database.get_container_client("project_requirements")
         return container
     finally:

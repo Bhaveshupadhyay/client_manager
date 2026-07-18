@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class LLmProvider(ABC):
     @abstractmethod
-    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage])->LLMResponse:
+    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage],tools: list | None =None)->LLMResponse:
         pass
 
 class GeminiLLmProvider(LLmProvider):
@@ -55,7 +55,7 @@ class GeminiLLmProvider(LLmProvider):
 
         self.model_name = model_name
 
-    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage])->LLMResponse:
+    async def generate_text(self, prompt:str,context_data:dict[str,Any],old_chats:list[ChatMessage],tools: list|None = None)->LLMResponse:
         gemini_content=[]
         dynamic_system_instruction = self.detailed_instructions
 
@@ -83,7 +83,8 @@ class GeminiLLmProvider(LLmProvider):
             response_mime_type="application/json",
             response_schema=LLMResponse,
             system_instruction=dynamic_system_instruction,
-            temperature=0.1
+            temperature=0.1,
+            tools=tools,
         )
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
