@@ -1,10 +1,12 @@
 from functools import lru_cache
-from typing import Generator
+from typing import AsyncGenerator
 from backend.core.config import config
 from backend.core.client import get_postgres_client, get_cosmos_client, get_redis_client, get_qdrant_client
 from fastapi import Security, HTTPException, status, Depends
 from fastapi.security.api_key import APIKeyHeader
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import joinedload
 from backend.models.account import Account, APIKeyModel
 from backend.repository.chat_repository import ChatRepository
 from backend.repository.file_repository import FileRepository
@@ -19,13 +21,10 @@ API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 
-def get_db() -> Generator:
-    session_local = get_postgres_client()
-    db = session_local()
-    try:
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async_session_factory = get_postgres_client()
+    async with async_session_factory() as db:
         yield db
-    finally:
-        db.close()
 
 
 def get_client_project_container():
@@ -76,10 +75,10 @@ def get_file_repository() -> FileRepository:
                           collection_name="client_conversations")
 
 
-def get_current_account(
+async def get_current_account(
         api_key: str = Security(api_key_header),
         source: str | None = None,
-        db: Session = Depends(get_db)
+        db: AsyncSession = Depends(get_db)
 ) -> Account:
     """
     Unified Authentication Dependency.
@@ -91,9 +90,9 @@ def get_current_account(
             detail="Authentication failed: X-API-Key header is missing.",
         )
 
-    api_key_obj = ((db.query(APIKeyModel).options(joinedload(APIKeyModel.account)).
-                    filter(APIKeyModel.key_string == api_key))
-                   .first())
+    stmt = select(APIKeyModel).options(joinedload(APIKeyModel.account)).filter(APIKeyModel.key_string == api_key)
+    result = await db.execute(stmt)
+    api_key_obj = result.scalars().first()
 
     if not api_key_obj:
         raise HTTPException(status_code=401, detail="Invalid API Key")

@@ -4,6 +4,8 @@ from typing import Annotated, Any
 from pydantic import BaseModel
 from langgraph.graph.message import add_messages
 from langchain_core.messages import AnyMessage
+
+from backend.schemas.chat import ServerActionType
 from backend.shared.constants import RouteAction
 
 def add_messages_limited(left: list[AnyMessage], right: list[AnyMessage] | AnyMessage) -> list[AnyMessage]:
@@ -23,6 +25,7 @@ class GlobalState(BaseModel):
     project_id: str | None = None
     client_budget: float | None = None
     estimated_cost: float | None = None
+    action: ServerActionType | None = None
 
     # 3. ROUTING/METADATA FIELDS
     # Used by the Supervisor to know who is talking or where to route next.

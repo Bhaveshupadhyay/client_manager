@@ -1,6 +1,7 @@
 import logging
 
 from backend.models.client import ProjectItem
+from backend.models.fields import ProjectFields
 from backend.models.llm import IntentType, LLMResponse
 from backend.repository.project_repository import ProjectRepository
 logger = logging.getLogger(__name__)
@@ -11,13 +12,12 @@ class ProjectService:
 
 
     async def update_project_budget(self, project_id:str,new_budget: int,):
-
         try:
-            project_item = await self.project_repository.get_project_details(project_id)
-            if project_item:
-                project_item.extracted_facts.client_budget = new_budget
-
-                await self.project_repository.update_project(project_item)
+            await self.project_repository.update_single_project_field(
+                project_id=project_id,
+                field_path=ProjectFields.extracted_facts.client_budget,
+                new_value=new_budget
+            )
 
         except Exception as e:
             raise e

@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 class RouteAction(StrEnum):
     BUDGET = "budget"
     REQUIREMENTS = "requirements"
+    ESTIMATION = "estimation"
     PROJECT_VERIFICATION = "project_verification"
     SUPERVISOR = "supervisor"
     END = "END"

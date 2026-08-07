@@ -9,6 +9,8 @@ from backend.shared.constants import RouteAction
 from backend.agents.budget.node import BudgetAgentNode
 from backend.agents.supervisor.node import SupervisorNode
 from backend.agents.project_verification.node import ProjectVerificationNode
+from backend.agents.requirements.node import RequirementsAgentNode
+from backend.agents.estimation.node import EstimationAgentNode
 
 from backend.core.client import get_cosmos_client
 from backend.core.config import config
@@ -27,6 +29,8 @@ project_repository = ProjectRepository(cosmos_db_container=container)
 budget_node = BudgetAgentNode(llm_provider=gemini_flash_client, project_repository=project_repository)
 supervisor_node = SupervisorNode(llm_provider=gemini_flash_client)
 project_verification_node = ProjectVerificationNode(project_repository=project_repository, llm_provider=gemini_flash_client)
+requirements_node = RequirementsAgentNode(llm_provider=gemini_flash_client)
+estimation_node = EstimationAgentNode(llm_provider=gemini_flash_client)
 
 # 3. Define state-driven router function
 def route_from_supervisor(state: GlobalState) -> str:
@@ -40,6 +44,8 @@ def route_from_supervisor(state: GlobalState) -> str:
         return "to_requirements"
     elif state.next_action == RouteAction.PROJECT_VERIFICATION:
         return "to_project_verification"
+    elif state.next_action == RouteAction.ESTIMATION:
+        return "to_estimation"
     else:
         return "end_conversation"
 
@@ -49,6 +55,8 @@ builder = StateGraph(GlobalState)
 # Add nodes (objects containing __call__ method)
 builder.add_node(RouteAction.SUPERVISOR, supervisor_node)
 builder.add_node(RouteAction.BUDGET, budget_node)
+builder.add_node(RouteAction.REQUIREMENTS, requirements_node)
+builder.add_node(RouteAction.ESTIMATION, estimation_node)
 builder.add_node(RouteAction.PROJECT_VERIFICATION, project_verification_node)
 
 # Entry point starts with the supervisor
@@ -60,8 +68,8 @@ builder.add_conditional_edges(
     route_from_supervisor,
     {
         "to_budget": RouteAction.BUDGET,
-        # Route requirements to END placeholder until the requirements node is implemented
-        "to_requirements": END,
+        "to_requirements": RouteAction.REQUIREMENTS,
+        "to_estimation": RouteAction.ESTIMATION,
         "to_project_verification": RouteAction.PROJECT_VERIFICATION,
         "end_conversation": END
     }
@@ -69,6 +77,8 @@ builder.add_conditional_edges(
 
 # Hand control back to supervisor after agent runs complete
 builder.add_edge(RouteAction.BUDGET, RouteAction.SUPERVISOR)
+builder.add_edge(RouteAction.REQUIREMENTS, RouteAction.SUPERVISOR)
+builder.add_edge(RouteAction.ESTIMATION, RouteAction.SUPERVISOR)
 builder.add_edge(RouteAction.PROJECT_VERIFICATION, RouteAction.SUPERVISOR)
 
 # 5. Compile with session checkpointer for conversation memory

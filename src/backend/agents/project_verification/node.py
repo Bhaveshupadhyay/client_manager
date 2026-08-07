@@ -1,4 +1,6 @@
 from langchain_core.messages import AIMessage
+
+from backend.schemas.chat import ServerActionType
 from backend.shared.state import GlobalState
 from backend.repository.project_repository import ProjectRepository
 from backend.agents.project_verification.prompt import PROJECT_VERIFICATION_SYSTEM_PROMPT
@@ -32,7 +34,6 @@ class ProjectVerificationNode:
 
         # 2. Check Cosmos DB for project details
         project_details = await self.project_repository.get_project_details(project_id)
-        print(project_details)
         
         if project_details:
             client_budget = None
@@ -52,7 +53,8 @@ class ProjectVerificationNode:
         else:
             updates = GlobalState(
                 project_id=project_id,
-                messages=[AIMessage(content=f"Project ID '{project_id}' was not found in our database. Would you like to create or register a new project setup using this ID?")],
-                active_agent=RouteAction.PROJECT_VERIFICATION
+                messages=[AIMessage(content=f"We couldn't find project ID '{project_id}' in our database. You can find the project ID in the invoice we sent you from clientmanager.tech, or if you'd like we can start a new project!")],
+                active_agent=RouteAction.PROJECT_VERIFICATION,
+                action=ServerActionType.START_NEW_PROJECT
             )
             return updates.get_updates()

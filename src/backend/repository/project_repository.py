@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from typing import Any
 
 from azure.cosmos import exceptions
 from fastapi import HTTPException
@@ -59,10 +60,34 @@ class ProjectRepository:
             )
 
         except exceptions.CosmosResourceNotFoundError:
-            await self._create_project(project_item)
+            await self.create_project(project_item)
 
 
-    async def _create_project(self,project_item: ProjectItem,):
+    async def update_single_project_field(self, project_id: str, field_path, new_value: Any):
+        """
+        Updates a single field in the Cosmos DB document.
+        :param project_id: The ID of the project to update.
+        :param field_path: A PatchPath from ProjectFields, or a raw JSON Patch path string (must start with '/').
+        :param new_value: The new value for the field.
+        """
+        resolved_path = field_path.path if hasattr(field_path, 'path') else field_path
+
+        try:
+            updated_at_str = datetime.now(timezone.utc).isoformat(timespec='seconds').replace("+00:00", "Z")
+
+            await self.cosmos_db_container.patch_item(
+                item=project_id,
+                partition_key=project_id,
+                patch_operations=[
+                    {"op": "set", "path": resolved_path, "value": new_value},
+                    {"op": "set", "path": "/updated_at", "value": updated_at_str}
+                ]
+            )
+        except exceptions.CosmosResourceNotFoundError:
+            logger.error(f"Cannot patch project {project_id} because it does not exist.")
+            raise
+
+    async def create_project(self,project_item: ProjectItem,):
 
         try:
             await self.cosmos_db_container.create_item(body=project_item.model_dump(mode="json"))

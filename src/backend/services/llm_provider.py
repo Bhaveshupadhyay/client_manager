@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from backend.models.llm import LLMResponse
 from backend.schemas.chat import ChatMessage
+from backend.core.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -21,14 +22,10 @@ class LLmProvider(ABC):
 
     DATA EXTRACTION AND SCHEMA RULES:
     - `intent_type`: Classify the user's immediate request into one of the following:
-      * `budget`: Questions or updates regarding pricing, budget, or costs.
-      * `requirements`: Feature requests, tech stack choices, or scope revisions.
       * `general_faq`: General inquiries, greetings, or casual talk.
     - `text`: Your polite response to the user.
     - `budget`: If the user explicitly mentions a budget or amount, extract it here as a string of numbers (no symbols, e.g., "50000").
     - `timeline`: If the user mentions a duration (e.g., "3 months"), extract the numeric value and the unit.
-    - `requirements`: If new features are described, list them here.
-    - `project_id`: If the user provides a project ID, extract it.
     - `reply_needed`: Set to true if a text reply is being sent to the user.
 
     CONVERSATIONAL RULES:
@@ -37,10 +34,25 @@ class LLmProvider(ABC):
     - COST DISCLOSURE: If the user asks for the cost and `Estimated Cost` in the project state is greater than 0, you MUST explicitly state that exact amount in your reply.
     - BUDGET MISMATCH: If the estimated cost is significantly higher than the client budget, explain that the cost is driven by the requirements and ask if they want to reduce the scope.
     - REQUIREMENT GATHERING: For new projects, ask them to elaborate on technical requirements, features, and overall goals before discussing pricing.
+    - GUARDRAILS: Answering coding questions or writing code for the user is strictly prohibited. You may answer general technical questions (e.g., "what is a server?") ONLY if project requirements have already been gathered. If no requirements are gathered yet, politely redirect the user back to discussing their project.
     """
 
     def __init__(self, detailed_instructions: str | None = None):
-        self.detailed_instructions = detailed_instructions or self.DEFAULT_INSTRUCTIONS
+        base_instructions = detailed_instructions or self.DEFAULT_INSTRUCTIONS
+        faq_text = ""
+        try:
+            faq_path = Path(__file__).parent.parent.parent / "data" / "faq.json"
+            if faq_path.exists():
+                with open(faq_path, "r", encoding="utf-8") as f:
+                    faqs = json.load(f)
+                if faqs:
+                    faq_text = "\n    GENERAL FAQ: Use the following knowledge base to answer common questions:\n"
+                    for item in faqs:
+                        faq_text += f"    * {item.get('question')}: {item.get('answer')}\n"
+        except Exception as e:
+            logger.error(f"Failed to load FAQ JSON: {e}")
+
+        self.detailed_instructions = base_instructions + faq_text
 
     @abstractmethod
     async def generate_text(
@@ -67,7 +79,7 @@ class LLmProvider(ABC):
 class GeminiLLmProvider(LLmProvider):
     def __init__(self, model_name: str = "gemini-3.1-flash-lite", detailed_instructions: str | None = None):
         super().__init__(detailed_instructions)
-        self.client = genai.Client()
+        self.client = genai.Client(api_key=config.GEMINI_API_KEY)
         self.model_name = model_name
 
     async def generate_text(
@@ -79,7 +91,10 @@ class GeminiLLmProvider(LLmProvider):
         system_instruction: str | None = None
     ) -> LLMResponse:
         gemini_content = []
-        dynamic_system_instruction = system_instruction or self.detailed_instructions
+        dynamic_system_instruction = self.detailed_instructions
+        
+        if system_instruction:
+            dynamic_system_instruction += f"\n\n--- AGENT ROLE & RULES ---\n{system_instruction}"
 
         if context_data:
             dynamic_system_instruction += "\n\n--- CURRENT PROJECT STATE ---\n"
