@@ -1,6 +1,6 @@
 from upstash_redis.asyncio import Redis
 
-from backend.schemas.chat import ChatMessage
+from backend.schemas.chat import ChatRequest, ChatMessage
 from backend.services.redis_service import get_redis_key
 
 

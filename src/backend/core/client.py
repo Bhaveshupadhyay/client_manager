@@ -1,73 +1,49 @@
+import os
 import urllib.parse
 
 from azure.cosmos.aio import CosmosClient
+from dotenv import load_dotenv
 from upstash_redis.asyncio import Redis
 from qdrant_client import QdrantClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from backend.core.config import config
+load_dotenv()
 
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
-
-_postgres_engine: AsyncEngine | None = None
-_postgres_client: async_sessionmaker[AsyncSession] | None = None
+_postgres_client: sessionmaker | None = None
 _redis_client: Redis | None = None
 _cosmos_client: CosmosClient | None = None
 _qdrant_client: QdrantClient | None = None
 Base = declarative_base()
 
-def get_postgres_client() -> async_sessionmaker[AsyncSession]:
-    global _postgres_engine, _postgres_client
+def get_postgres_client() -> sessionmaker:
+    global _postgres_client
     if _postgres_client is None:
-        raw_password = config.POSTGRES_DB_PASSWORD
+        raw_password = os.getenv("POSTGRES_DB_PASSWORD", "")
         encoded_password = urllib.parse.quote_plus(raw_password)
 
-        raw_user = config.POSTGRES_DB_USER
-        encoded_user = urllib.parse.quote_plus(raw_user)
+        DB_HOST = os.getenv("POSTGRES_DB_HOST", "")
 
-        db_host = config.POSTGRES_DB_HOST
-        db_name = config.POSTGRES_DB_NAME or "postgres"
-        db_port = config.POSTGRES_DB_PORT or "5432"
+        SQLALCHEMY_DATABASE_URL = f"postgresql://postgres.ksvunxoiwtrsvujhkpxx:{encoded_password}@{DB_HOST}:5432/postgres?sslmode=require"
 
-        ASYNC_SQLALCHEMY_DATABASE_URL = (
-            f"postgresql+asyncpg://{encoded_user}:{encoded_password}@{db_host}:{db_port}/{db_name}?ssl=require"
-        )
+        engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
-        _postgres_engine = create_async_engine(
-            ASYNC_SQLALCHEMY_DATABASE_URL,
-            pool_size=20,
-            max_overflow=10,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            echo=False,
-        )
-
-        _postgres_client = async_sessionmaker(
-            bind=_postgres_engine,
-            class_=AsyncSession,
-            autocommit=False,
-            autoflush=False,
-            expire_on_commit=False,
-        )
+        _postgres_client = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     return _postgres_client
 
 
 def get_redis_client() -> Redis:
     global _redis_client
     if _redis_client is None:
-        _redis_client = Redis(
-            url=config.UPSTASH_REDIS_REST_URL, 
-            token=config.UPSTASH_REDIS_REST_TOKEN
-        )
+        _redis_client = Redis.from_env()
     return _redis_client
 
 def get_cosmos_client() -> CosmosClient:
     global _cosmos_client
     if _cosmos_client is None:
         cosmos_client = CosmosClient(
-            config.COSMOS_ENDPOINT,
-            credential=config.COSMOS_KEY
+            os.getenv("COSMOS_ENDPOINT"),
+            credential=os.getenv("COSMOS_KEY")
         )
     return cosmos_client
 
@@ -75,11 +51,10 @@ def get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     if _qdrant_client is None:
         qdrant_client = QdrantClient(
-            url=config.QDRANT_ENDPOINT,
-            api_key=config.QDRANT_KEY,
+            url=os.getenv("QDRANT_ENDPOINT"),
+            api_key=os.getenv("QDRANT_KEY"),
         )
     return qdrant_client
-
 def open_connection() -> None:
     get_cosmos_client()
     get_redis_client()
@@ -93,11 +68,10 @@ async def close_redis_client() -> None:
         _redis_client = None
 
 
-async def close_postgres_client() -> None:
-    global _postgres_engine, _postgres_client
-    if _postgres_engine is not None:
-        await _postgres_engine.dispose()
-        _postgres_engine = None
+def close_postgres_client() -> None:
+    global _postgres_client
+    if _postgres_client is not None:
+        _postgres_client.close_all()
         _postgres_client = None
 
 async def close_cosmos_client() -> None:
@@ -108,5 +82,5 @@ async def close_cosmos_client() -> None:
 
 async def close_connection():
     await close_redis_client()
-    await close_postgres_client()
+    close_postgres_client()
     await close_cosmos_client()

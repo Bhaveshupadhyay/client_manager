@@ -7,7 +7,7 @@ class Requirement(BaseModel):
     vector: List[float]
 
 class ExtractedFacts(BaseModel):
-    client_budget: float
+    client_budget: int
     estimated_cost: float = 0.0
     currency: str = "USD"
     tech_stack: List[str] = Field(default_factory=list)
