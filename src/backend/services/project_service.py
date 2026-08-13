@@ -11,25 +11,15 @@ class ProjectService:
         self.project_repository = project_repository
 
 
-    async def update_project_budget(self, project_id:str,new_budget: int,):
-        try:
-            await self.project_repository.update_single_project_field(
-                project_id=project_id,
-                field_path=ProjectFields.extracted_facts.client_budget,
-                new_value=new_budget
-            )
+    async def update_project_budget(self, project_id: str, new_budget: float):
+        await self.project_repository.update_single_project_field(
+            project_id=project_id,
+            field_path=ProjectFields.extracted_facts.client_budget,
+            new_value=new_budget
+        )
 
-        except Exception as e:
-            raise e
-
-    async def update_project_cost(self,project_id:str,cost: int):
-
-        try:
-            project_item = await self.project_repository.get_project_details(project_id)
-            if project_item:
-                project_item.extracted_facts.estimated_cost = cost
-
-                await self.project_repository.update_project(project_item)
-
-        except Exception as e:
-            raise e
+    async def update_project_cost(self, project_id: str, cost: float):
+        project_item = await self.project_repository.get_project_details(project_id)
+        if project_item:
+            project_item.extracted_facts.estimated_cost = cost
+            await self.project_repository.update_project(project_item)

@@ -6,8 +6,11 @@ from backend.repository.project_repository import ProjectRepository
 from backend.agents.project_verification.prompt import PROJECT_VERIFICATION_SYSTEM_PROMPT
 from backend.shared.constants import RouteAction
 
+from backend.services.llm_provider import LLmProvider
+
+
 class ProjectVerificationNode:
-    def __init__(self, project_repository: ProjectRepository, llm_provider):
+    def __init__(self, project_repository: ProjectRepository, llm_provider: LLmProvider):
         self.project_repository = project_repository
         self.llm = llm_provider
 
@@ -24,7 +27,7 @@ class ProjectVerificationNode:
 
         project_id = response.project_id
 
-        if not project_id:
+        if not project_id or not project_id.startswith("pid_"):
             text_reply = response.text or "Could you please specify your project ID?"
             updates = GlobalState(
                 messages=[AIMessage(content=text_reply)],

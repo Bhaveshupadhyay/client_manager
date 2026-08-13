@@ -12,9 +12,30 @@ from backend.models.llm import LLMResponse
 from backend.schemas.chat import ChatMessage
 from backend.core.config import config
 
+from functools import lru_cache
+import inspect
+
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+
+
+@lru_cache(maxsize=1)
+def _load_faq_text() -> str:
+    try:
+        faq_path = Path(__file__).parent.parent.parent / "data" / "faq.json"
+        if faq_path.exists():
+            with open(faq_path, "r", encoding="utf-8") as f:
+                faqs = json.load(f)
+            if faqs:
+                lines = ["\n    GENERAL FAQ: Use the following knowledge base to answer common questions:\n"]
+                for item in faqs:
+                    lines.append(f"    * {item.get('question')}: {item.get('answer')}\n")
+                return "".join(lines)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.error(f"Failed to load FAQ JSON: {e}")
+    return ""
+
 
 class LLmProvider(ABC):
     DEFAULT_INSTRUCTIONS = """
@@ -39,20 +60,7 @@ class LLmProvider(ABC):
 
     def __init__(self, detailed_instructions: str | None = None):
         base_instructions = detailed_instructions or self.DEFAULT_INSTRUCTIONS
-        faq_text = ""
-        try:
-            faq_path = Path(__file__).parent.parent.parent / "data" / "faq.json"
-            if faq_path.exists():
-                with open(faq_path, "r", encoding="utf-8") as f:
-                    faqs = json.load(f)
-                if faqs:
-                    faq_text = "\n    GENERAL FAQ: Use the following knowledge base to answer common questions:\n"
-                    for item in faqs:
-                        faq_text += f"    * {item.get('question')}: {item.get('answer')}\n"
-        except Exception as e:
-            logger.error(f"Failed to load FAQ JSON: {e}")
-
-        self.detailed_instructions = base_instructions + faq_text
+        self.detailed_instructions = base_instructions + _load_faq_text()
 
     @abstractmethod
     async def generate_text(
@@ -82,6 +90,33 @@ class GeminiLLmProvider(LLmProvider):
         self.client = genai.Client(api_key=config.GEMINI_API_KEY)
         self.model_name = model_name
 
+    async def _execute_tools(self, tool_list: list, function_calls: list) -> list[dict[str, Any]]:
+        tool_map = {}
+        for t in tool_list:
+            name = getattr(t, "name", None) or getattr(t, "__name__", str(t))
+            tool_map[name] = t
+
+        results = []
+        for fc in function_calls:
+            func_name = getattr(fc, "name", "")
+            func_args = getattr(fc, "args", {}) or {}
+            if func_name in tool_map:
+                target_tool = tool_map[func_name]
+                try:
+                    if hasattr(target_tool, "ainvoke"):
+                        res = await target_tool.ainvoke(func_args)
+                    elif inspect.iscoroutinefunction(target_tool):
+                        res = await target_tool(**func_args)
+                    elif callable(target_tool):
+                        res = target_tool(**func_args)
+                    else:
+                        res = str(target_tool)
+                    results.append({"name": func_name, "response": res})
+                except Exception as err:
+                    logger.error(f"Error executing tool {func_name}: {err}")
+                    results.append({"name": func_name, "response": f"Error: {err}"})
+        return results
+
     async def generate_text(
         self,
         prompt: str,
@@ -101,7 +136,6 @@ class GeminiLLmProvider(LLmProvider):
             dynamic_system_instruction += "Use this current data to inform your response:\n"
 
             for key, value in context_data.items():
-                # Replace underscores with spaces for better LLM readability
                 formatted_key = key.replace('_', ' ').title()
                 dynamic_system_instruction += f"- {formatted_key}: {value}\n"
 
@@ -116,20 +150,48 @@ class GeminiLLmProvider(LLmProvider):
             "role": "user",
             "parts": [{"text": prompt}]
         })
-        config = types.GenerateContentConfig(
+
+        if tools:
+            gen_config = types.GenerateContentConfig(
+                system_instruction=dynamic_system_instruction,
+                temperature=0.1,
+                tools=tools,
+            )
+            response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=gemini_content,
+                config=gen_config
+            )
+            if getattr(response, "function_calls", None):
+                tool_results = await self._execute_tools(tools, response.function_calls)
+                logger.info(f"Executed tools: {tool_results}")
+                
+            structured_config = types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=LLMResponse,
+                system_instruction=dynamic_system_instruction,
+                temperature=0.1,
+            )
+            final_response = await self.client.aio.models.generate_content(
+                model=self.model_name,
+                contents=gemini_content,
+                config=structured_config
+            )
+            return LLMResponse.model_validate_json(final_response.text or "{}")
+
+        gen_config = types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=LLMResponse,
             system_instruction=dynamic_system_instruction,
             temperature=0.1,
-            tools=tools,
         )
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
             contents=gemini_content,
-            config=config
+            config=gen_config
         )
 
-        return LLMResponse.model_validate_json(response.text or "")
+        return LLMResponse.model_validate_json(response.text or "{}")
 
     async def generate_structured(
         self,
@@ -149,7 +211,7 @@ class GeminiLLmProvider(LLmProvider):
                 "parts": [{"text": prompt}]
             }]
 
-        config = types.GenerateContentConfig(
+        gen_config = types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=response_schema,
             system_instruction=dynamic_system_instruction,
@@ -158,7 +220,7 @@ class GeminiLLmProvider(LLmProvider):
         response = await self.client.aio.models.generate_content(
             model=self.model_name,
             contents=gemini_content,
-            config=config
+            config=gen_config
         )
 
         return response_schema.model_validate_json(response.text or "{}")

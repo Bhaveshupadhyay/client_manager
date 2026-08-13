@@ -14,7 +14,7 @@ class SupervisorNode:
     async def __call__(self, state: GlobalState):
         # 1. If the last message in state is already an AI message,
         # it means a worker node just finished generating a response. Route directly to END.
-        print("old msg",[msg.content for msg in state.messages])
+        logger.debug("old msg: %s", [msg.content for msg in state.messages])
         if state.messages and isinstance(state.messages[-1], AIMessage):
             updates = GlobalState(next_action=RouteAction.END)
             return updates.get_updates()

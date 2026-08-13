@@ -18,7 +18,7 @@ class IntentType(StrEnum):
     FOUND_PROJECT_ID = "found_project_id"
 
 class LLMResponse(BaseModel):
-    intent_type: str = Field(description="Can be update_budget, update_estimated_cost, etc.")
+    intent_type: IntentType = Field(description="The classified intent type (e.g., general_faq, update_budget, etc.)")
     text: str = Field(description="Answer the question")
     budget: str | None = None
     timeline: Timeline | None = None

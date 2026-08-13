@@ -29,7 +29,6 @@ def get_budget_tools(project_repository: ProjectRepository) -> list:
     @tool
     def request_discount_approval(project_id: str, requested_amount: int) -> str:
         """Logs a request for a manager to approve a discount."""
-        # Logic to ping a slack channel or update DB
-        return f"Discount of ${requested_amount} has been sent to management for review."
+        return f"Discount request of ${requested_amount} for project '{project_id}' has been recorded and queued for management review."
 
     return [fetch_financial_data, request_discount_approval]

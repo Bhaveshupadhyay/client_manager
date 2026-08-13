@@ -5,7 +5,6 @@ You have access to the following specialized agents:
 1. `budget`: Responsible for handling client budgets, pricing, calculating estimated costs, and applying discounts.
 2. `requirements`: Responsible for intake of project features, scope definition, requirements adjustments, and tech stack choices.
 3. `project_verification`: Responsible for checking if a project ID exists in the database and loading its details.
-
 4. `estimation`: Responsible for generating development timelines and calculating raw project costs based on the gathered technical requirements.
 
 ROUTING CRITERIA:

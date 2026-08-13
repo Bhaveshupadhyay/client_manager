@@ -65,20 +65,20 @@ def get_redis_client() -> Redis:
 def get_cosmos_client() -> CosmosClient:
     global _cosmos_client
     if _cosmos_client is None:
-        cosmos_client = CosmosClient(
+        _cosmos_client = CosmosClient(
             config.COSMOS_ENDPOINT,
             credential=config.COSMOS_KEY
         )
-    return cosmos_client
+    return _cosmos_client
 
 def get_qdrant_client() -> QdrantClient:
     global _qdrant_client
     if _qdrant_client is None:
-        qdrant_client = QdrantClient(
+        _qdrant_client = QdrantClient(
             url=config.QDRANT_ENDPOINT,
             api_key=config.QDRANT_KEY,
         )
-    return qdrant_client
+    return _qdrant_client
 
 def open_connection() -> None:
     get_cosmos_client()
