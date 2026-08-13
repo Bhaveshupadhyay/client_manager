@@ -1,2 +1,9 @@
 .env
 graphify-out
+.agents
+skills-lock.json
+.idea/
+__pycache__/
+*.pyc
+.DS_Store
+.venv/
