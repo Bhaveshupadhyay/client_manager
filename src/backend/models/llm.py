@@ -14,11 +14,14 @@ class IntentType(StrEnum):
     RESET_REQUIREMENTS = "reset_requirements"
     UPDATE_TECH_STACK = "update_tech_stack"
     GENERAL_FAQ = "general_faq"
+    QUERY_COST_ESTIMATE = "query_cost_estimate"
+    FOUND_PROJECT_ID = "found_project_id"
 
-class ClientIntent(BaseModel):
+class LLMResponse(BaseModel):
     intent_type: str = Field(description="Can be update_budget, update_estimated_cost, etc.")
     text: str = Field(description="Answer the question")
     budget: str | None = None
     timeline: Timeline | None = None
     requirements: str | None = None
+    project_id: str | None = None
     reply_needed: bool = Field(description="True if it's a general question needing an answer right away")
